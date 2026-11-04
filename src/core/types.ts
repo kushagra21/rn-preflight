@@ -21,15 +21,21 @@ export interface IosProject {
     values: PlistDict;
     keysFromBuildSettings: string[];
   };
+  /** InfoPlist.strings per .lproj language next to Info.plist. */
+  infoPlistStrings?: { language: string; file: string; values: Record<string, string> }[];
   version: { marketing?: string; build?: string };
   /** PrivacyInfo.xcprivacy files in the app's folders, and whether the app target copies one into the app. */
   privacyManifests: { file: string; values?: PlistDict; error?: string }[];
   privacyManifestInTarget: boolean;
   entitlements?: { file: string; values: PlistDict };
-  appIcon?: { name: string; dir?: string; images: AppIconImage[] };
+  appIcon?: { name: string; dir?: string; composerFile?: string; images: AppIconImage[] };
   launchStoryboard?: { name: string; file?: string };
   /** Pods from Podfile.lock, name to version; subspecs (Foo/Bar) are folded into Foo. */
   pods?: Record<string, string>;
+  /** ios/Pods, when pod install has run. */
+  podsDir?: string;
+  /** react-native-permissions handlers from setup_permissions in the Podfile. */
+  podfilePermissions?: string[];
 }
 
 export interface AppIconImage {

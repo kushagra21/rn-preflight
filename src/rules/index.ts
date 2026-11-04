@@ -1,8 +1,26 @@
 import type { Project } from "../core/types.js";
+import { appIcon, encryptionFlag, ipadOrientations, launchScreen, loginServices, sceneLifecycle, transportSecurity } from "./ios-app.js";
+import { privacyManifestPresent, privacyPodApis, privacyReasons, privacySdkList } from "./ios-privacy.js";
+import { usageStringMissing, usageStringQuality, usageStringTranslations } from "./ios-usage.js";
 import type { Finding, Rule, Severity } from "./types.js";
 
-/** Every rule rn-preflight runs. Phases 2 and 3 fill this in. */
-export const RULES: Rule[] = [];
+/** Every rule rn-preflight runs, in the order `rules` lists them. */
+export const RULES: Rule[] = [
+  usageStringMissing,
+  usageStringQuality,
+  usageStringTranslations,
+  privacyManifestPresent,
+  privacyReasons,
+  privacyPodApis,
+  privacySdkList,
+  appIcon,
+  launchScreen,
+  ipadOrientations,
+  sceneLifecycle,
+  transportSecurity,
+  encryptionFlag,
+  loginServices,
+];
 
 const ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
 

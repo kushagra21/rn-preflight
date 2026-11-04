@@ -1,10 +1,11 @@
-import { existsSync, readdirSync } from "node:fs";
-import { basename, isAbsolute, join, relative } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { UserError } from "../core/errors.js";
 import { findFiles, isDir, readIfExists, readJson, readText } from "../core/fs.js";
 import type { AppIconImage, IosProject } from "../core/types.js";
 import { expandSettings, readPbxProject, type PbxTarget, type PbxValue } from "./pbxproj.js";
 import { isDict, parsePlist, type PlistDict, type PlistValue } from "./plist.js";
+import { parseStrings } from "./strings.js";
 
 export interface IosOptions {
   xcodeproj?: string;
@@ -111,11 +112,34 @@ export function readPodfileLock(text: string): Record<string, string> {
 }
 
 function readAppIcon(iosDir: string, name: string): IosProject["appIcon"] {
+  // Xcode 26's Icon Composer files (Name.icon) replace the asset catalog set.
+  const composer = findFiles(iosDir, (file) => file === `${name}.icon`)[0];
   const dir = findFiles(iosDir, (file) => file === `${name}.appiconset`)[0];
-  if (!dir) return { name, images: [] };
-  const contents = join(dir, "Contents.json");
-  const images = existsSync(contents) ? ((readJson(contents).images ?? []) as AppIconImage[]) : [];
-  return { name, dir, images };
+  const contents = dir && join(dir, "Contents.json");
+  const images = contents && existsSync(contents) ? ((readJson(contents).images ?? []) as AppIconImage[]) : [];
+  return { name, ...(dir ? { dir } : {}), ...(composer ? { composerFile: composer } : {}), images };
+}
+
+/** Permission handlers named in react-native-permissions' setup_permissions([...]) in the Podfile. */
+export function readPodfilePermissions(podfile: string): string[] | undefined {
+  const call = /^[ \t]*setup_permissions\s*\(?\s*\[([\s\S]*?)\]/m.exec(podfile);
+  if (!call) return undefined;
+  const live = call[1]!.split("\n").map((line) => line.replace(/#.*$/, ""));
+  return [...live.join("\n").matchAll(/["']([A-Za-z]+)["']/g)].map((m) => m[1]!);
+}
+
+/** InfoPlist.strings in each .lproj folder next to Info.plist: the translated purpose strings. */
+function readInfoPlistStrings(infoPlistFile: string, notes: string[]): IosProject["infoPlistStrings"] {
+  const out: NonNullable<IosProject["infoPlistStrings"]> = [];
+  for (const file of findFiles(dirname(infoPlistFile), (name) => name === "InfoPlist.strings", 2)) {
+    const language = basename(dirname(file), ".lproj");
+    try {
+      out.push({ language, file, values: parseStrings(readFileSync(file)) });
+    } catch (error) {
+      notes.push(`Couldn't read ${file}: ${(error as Error).message}`);
+    }
+  }
+  return out;
 }
 
 export function readIos(iosDir: string, options: IosOptions, notes: string[]): IosProject {
@@ -155,7 +179,10 @@ export function readIos(iosDir: string, options: IosOptions, notes: string[]): I
   if (settings.INFOPLIST_FILE) {
     const file = relativeToIos(iosDir, settings.INFOPLIST_FILE);
     const values = existsSync(file) ? readPlistFile(file, notes) : (notes.push(`INFOPLIST_FILE points at ${file}, which doesn't exist.`), undefined);
-    if (values) ios.infoPlist = { file, values: { ...fromSettings, ...(expandPlist(values, settings) as PlistDict) }, keysFromBuildSettings };
+    if (values) {
+      ios.infoPlist = { file, values: { ...fromSettings, ...(expandPlist(values, settings) as PlistDict) }, keysFromBuildSettings };
+      ios.infoPlistStrings = readInfoPlistStrings(file, notes);
+    }
   } else if (keysFromBuildSettings.length) {
     ios.infoPlist = { file: pbxFile, values: fromSettings, keysFromBuildSettings };
   } else {
@@ -189,6 +216,11 @@ export function readIos(iosDir: string, options: IosOptions, notes: string[]): I
     const file = findFiles(iosDir, (name) => name === `${storyboard}.storyboard` || name === `${storyboard}.xib`)[0];
     ios.launchStoryboard = { name: storyboard, ...(file ? { file } : {}) };
   }
+
+  const podfile = readIfExists(join(iosDir, "Podfile"));
+  const handlers = podfile === undefined ? undefined : readPodfilePermissions(podfile);
+  if (handlers) ios.podfilePermissions = handlers;
+  if (isDir(join(iosDir, "Pods"))) ios.podsDir = join(iosDir, "Pods");
 
   const lock = readIfExists(join(iosDir, "Podfile.lock"));
   if (lock !== undefined) ios.pods = readPodfileLock(lock);

@@ -1,0 +1,79 @@
+{
+  "checkedOn": "2026-11-04",
+  "sources": [
+    "Each library's README or setup guide on npm, read 2026-11-04",
+    "https://github.com/zoontek/react-native-permissions#ios"
+  ],
+  "data": {
+    "libraries": {
+      "react-native-vision-camera": {
+        "required": ["NSCameraUsageDescription"],
+        "ifUsed": { "NSMicrophoneUsageDescription": "if you record video with audio" }
+      },
+      "react-native-image-picker": {
+        "ifUsed": {
+          "NSPhotoLibraryUsageDescription": "if you pick images or videos from the photo library",
+          "NSCameraUsageDescription": "if you take photos or videos",
+          "NSMicrophoneUsageDescription": "if you record video"
+        }
+      },
+      "react-native-image-crop-picker": {
+        "required": ["NSPhotoLibraryUsageDescription"],
+        "ifUsed": {
+          "NSCameraUsageDescription": "if you open the camera",
+          "NSMicrophoneUsageDescription": "if you record video"
+        }
+      },
+      "@react-native-camera-roll/camera-roll": {
+        "required": ["NSPhotoLibraryUsageDescription"],
+        "ifUsed": { "NSPhotoLibraryAddUsageDescription": "if you save to the photo library (the app exits without it)" }
+      },
+      "@react-native-community/geolocation": {
+        "required": ["NSLocationWhenInUseUsageDescription"],
+        "ifUsed": { "NSLocationAlwaysAndWhenInUseUsageDescription": "if you track location in the background" }
+      },
+      "react-native-contacts": { "required": ["NSContactsUsageDescription"] },
+      "react-native-calendar-events": { "required": ["NSCalendarsUsageDescription"] },
+      "react-native-ble-plx": { "required": ["NSBluetoothAlwaysUsageDescription"] },
+      "react-native-biometrics": { "required": ["NSFaceIDUsageDescription"] },
+      "react-native-touch-id": { "required": ["NSFaceIDUsageDescription"] },
+      "react-native-keychain": {
+        "ifUsed": { "NSFaceIDUsageDescription": "if items are protected with Face ID" }
+      },
+      "@react-native-voice/voice": { "required": ["NSMicrophoneUsageDescription", "NSSpeechRecognitionUsageDescription"] },
+      "react-native-tracking-transparency": { "required": ["NSUserTrackingUsageDescription"] },
+      "react-native-health": {
+        "required": ["NSHealthShareUsageDescription"],
+        "ifUsed": { "NSHealthUpdateUsageDescription": "if you write health data" }
+      },
+      "react-native-camera-kit": {
+        "required": ["NSCameraUsageDescription"],
+        "ifUsed": { "NSPhotoLibraryUsageDescription": "if you save photos" }
+      },
+      "react-native-document-scanner-plugin": { "required": ["NSCameraUsageDescription"] },
+      "react-native-qrcode-scanner": { "required": ["NSCameraUsageDescription"] }
+    },
+    "permissionHandlers": {
+      "AppTrackingTransparency": ["NSUserTrackingUsageDescription"],
+      "Bluetooth": ["NSBluetoothAlwaysUsageDescription"],
+      "Calendars": ["NSCalendarsFullAccessUsageDescription"],
+      "CalendarsWriteOnly": ["NSCalendarsWriteOnlyAccessUsageDescription"],
+      "Camera": ["NSCameraUsageDescription"],
+      "Contacts": ["NSContactsUsageDescription"],
+      "FaceID": ["NSFaceIDUsageDescription"],
+      "LocationAccuracy": ["NSLocationTemporaryUsageDescriptionDictionary"],
+      "LocationAlways": ["NSLocationAlwaysAndWhenInUseUsageDescription"],
+      "LocationWhenInUse": ["NSLocationWhenInUseUsageDescription"],
+      "MediaLibrary": ["NSAppleMusicUsageDescription"],
+      "Microphone": ["NSMicrophoneUsageDescription"],
+      "Motion": ["NSMotionUsageDescription"],
+      "Notifications": [],
+      "PhotoLibrary": ["NSPhotoLibraryUsageDescription"],
+      "PhotoLibraryAddOnly": ["NSPhotoLibraryAddUsageDescription"],
+      "Reminders": ["NSRemindersFullAccessUsageDescription"],
+      "Siri": ["NSSiriUsageDescription"],
+      "SpeechRecognition": ["NSSpeechRecognitionUsageDescription"],
+      "StoreKit": []
+    }
+  }
+}
