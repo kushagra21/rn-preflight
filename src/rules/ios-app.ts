@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { readPng } from "../core/png.js";
+import { minAlpha, readPng } from "../core/png.js";
 import { isDict } from "../readers/plist.js";
 import { infoKeyLocation, infoValue, list } from "./helpers.js";
 import type { RawFinding, Rule } from "./types.js";
@@ -142,7 +142,10 @@ export const appIcon: Rule = {
     if (!withFile.length) {
       findings.push({ key: "no-1024", message: `${icon.name} has no 1024×1024 App Store image`, file: contents, fix: "Drop a 1024×1024 PNG without transparency into the App Store (or single size) slot." });
     }
-    for (const image of icon.images.filter((i) => i.filename)) {
+    // Mac Catalyst, watch and other slots aren't part of an iOS App Store build's checks here.
+    const IOS_IDIOMS = ["iphone", "ipad", "ios-marketing"];
+    const iosImages = icon.images.filter((i) => i.filename && (IOS_IDIOMS.includes(i.idiom ?? "") || (i.idiom === "universal" && (i.platform ?? "ios") === "ios")));
+    for (const image of iosImages) {
       const file = join(icon.dir, image.filename!);
       let bytes;
       try {
@@ -163,7 +166,17 @@ export const appIcon: Rule = {
         findings.push({ key: `size:${image.filename}`, message: `${image.filename} is ${png.width}×${png.height}; its slot (${image.size} @${scale}x) needs ${expected}×${expected}`, file });
       }
       if (store.includes(image) && png.alpha) {
-        findings.push({ key: `alpha:${image.filename}`, message: `${relative(icon.dir, file)} has an alpha channel; the App Store icon must be opaque (ITMS-90717)`, file, fix: "Re-export it flattened onto a solid background, with no alpha channel." });
+        const lowest = minAlpha(bytes);
+        const name = relative(icon.dir, file);
+        const fix = "Re-export it flattened onto a solid background, with no alpha channel.";
+        if (lowest === undefined) {
+          findings.push({ key: `alpha:${image.filename}`, severity: "warning", message: `${name} can be transparent (palette transparency or an interlaced image); the App Store icon must be opaque (ITMS-90717)`, file, fix });
+        } else if (lowest < 255) {
+          findings.push({ key: `alpha:${image.filename}`, message: `${name} has transparent pixels; the App Store icon must be opaque (ITMS-90717)`, file, fix });
+        } else {
+          // Every pixel is opaque; shipping apps with such icons pass, so this is only worth tidying.
+          findings.push({ key: `alpha:${image.filename}`, severity: "info", message: `${name} has an alpha channel, though every pixel is opaque`, file, fix });
+        }
       }
     }
     return findings;

@@ -125,13 +125,15 @@ export const usageStringTranslations: Rule = {
   platform: "ios",
   severity: "info",
   title: "Translated purpose strings cover every permission",
-  why: "When an app translates some purpose strings, a missing one shows in the development language in an otherwise translated permission prompt.",
+  why: "When a language translates some purpose strings, a missing one shows in the development language in an otherwise translated permission prompt.",
   docs: ["https://developer.apple.com/documentation/bundleresources/information-property-list/protected-resources"],
   checkedOn: "2026-11-04",
   check(project) {
     const ios = project.ios!;
     const keys = Object.entries(ios.infoPlist?.values ?? {}).filter(([key, value]) => isUsageKey(key) && typeof value === "string" && value.trim()).map(([key]) => key);
     return (ios.infoPlistStrings ?? []).flatMap((strings) => {
+      // A file that only renames the app (or is empty) isn't translating permissions at all.
+      if (!Object.keys(strings.values).some(isUsageKey)) return [];
       const missing = keys.filter((key) => !(key in strings.values));
       if (!missing.length) return [];
       return [{ key: strings.language, message: `${strings.language}.lproj/InfoPlist.strings doesn't translate ${list(missing)}`, file: strings.file }];

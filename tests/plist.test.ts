@@ -53,6 +53,7 @@ describe("parsePbxproj", () => {
     expect(app.configurations.Release!.INFOPLIST_FILE).toBe("A11yTestApp/Info.plist");
     expect(app.resources).toContain("PrivacyInfo.xcprivacy");
     expect(app.resources).toContain("LaunchScreen.storyboard");
+    expect(app.resourcePaths).toContain("A11yTestApp/PrivacyInfo.xcprivacy");
     expect(project.configurations.Release).toBeDefined();
   });
 });

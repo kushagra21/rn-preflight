@@ -20,10 +20,15 @@ const DOCS_SDKS = "https://developer.apple.com/support/third-party-SDK-requireme
 
 const short = (category: string) => category.replace("NSPrivacyAccessedAPICategory", "");
 
-/** The app's own manifest: the one next to Info.plist when there are several. */
+/**
+ * The app's own manifest: the one the app target ships, else the one next to Info.plist, else one not inside an app
+ * extension's folder (extensions have their own targets and manifests).
+ */
 export function appManifest(ios: IosProject) {
+  const shipped = ios.privacyManifests.find((m) => m.inTarget);
+  if (shipped) return shipped;
   const near = ios.infoPlist && ios.privacyManifests.find((m) => dirname(m.file) === dirname(ios.infoPlist!.file));
-  return near ?? ios.privacyManifests[0];
+  return near ?? ios.privacyManifests.find((m) => dirname(m.file) === ios.dir) ?? ios.privacyManifests[0];
 }
 
 /** Declared required-reason API categories and their reasons. */
@@ -44,7 +49,7 @@ export const privacyManifestPresent: Rule = {
   platform: "ios",
   severity: "error",
   title: "The app ships a privacy manifest that covers React Native's own API use",
-  why: "React Native uses required-reason APIs (file timestamps, user defaults, boot time). Without them declared in the app's PrivacyInfo.xcprivacy, App Store Connect sends ITMS-91053.",
+  why: "Apple requires an app privacy manifest. React Native uses required-reason APIs (file timestamps, user defaults, boot time); its pod install copies them into the app's manifest because Apple has sent ITMS-91053 for APIs declared only inside static pods. Some apps turn that off and rely on the pods' own manifests, so a missing declaration is a warning.",
   docs: [DOCS_MANIFEST, DOCS_REASONS],
   checkedOn: DATA.checkedOn,
   check(project) {
@@ -58,7 +63,7 @@ export const privacyManifestPresent: Rule = {
     if (!ios.privacyManifestInTarget) {
       findings.push(
         ios.pods
-          ? { key: "not-in-target", message: `PrivacyInfo.xcprivacy isn't in ${ios.target}'s Copy Bundle Resources, so it won't ship`, file: manifest.file, fix: "In Xcode, tick the app target under Target Membership for PrivacyInfo.xcprivacy." }
+          ? { key: "not-in-target", severity: "warning", message: `${relative(project.root, manifest.file)} isn't in ${ios.target}'s Copy Bundle Resources, so it won't ship and its declarations don't count`, file: manifest.file, fix: "In Xcode, tick the app target under Target Membership for PrivacyInfo.xcprivacy." }
           : { key: "not-in-target", severity: "info", message: `PrivacyInfo.xcprivacy isn't in ${ios.target}'s resources yet; pod install adds it`, file: manifest.file, fix: "Run pod install in ios/." },
       );
     }
@@ -67,6 +72,7 @@ export const privacyManifestPresent: Rule = {
     if (missing.length) {
       findings.push({
         key: "core-apis",
+        severity: "warning",
         message: `PrivacyInfo.xcprivacy doesn't declare ${list(missing.map(short))}, which React Native itself uses`,
         file: manifest.file,
         fix: `Run pod install (it merges these in), or add them with reasons ${list(missing.map((c) => DATA.data.reactNativeCore[c]!))}.`,

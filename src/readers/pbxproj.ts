@@ -1,3 +1,5 @@
+import { posix } from "node:path";
+
 /** project.pbxproj is an old-style (OpenStep) property list: `{ key = value; }`, `( a, b, )`, strings. */
 export type PbxValue = string | PbxValue[] | PbxDict;
 export interface PbxDict {
@@ -111,6 +113,8 @@ export interface PbxTarget {
   configurations: Record<string, Record<string, PbxValue>>;
   /** File names (as Xcode shows them) in the target's Copy Bundle Resources phase. */
   resources: string[];
+  /** The same files' paths relative to the project's folder, where they can be worked out. */
+  resourcePaths: string[];
   /**
    * Xcode 16 synchronized folders: every file under `path` (relative to the project's folder) belongs to the
    * target without being listed, except those in `exceptions` (relative to that folder).
@@ -147,15 +151,39 @@ export function readPbxProject(text: string): PbxProject {
     return typeof name === "string" ? name.split("/").pop()! : undefined;
   };
 
+  // A file's path is its own path inside each enclosing group's path (sourceTree "<group>").
+  const parentOf = new Map<string, string>();
+  for (const [id, value] of Object.entries(objects)) {
+    const group = asDict(value);
+    if (group && (group.isa === "PBXGroup" || group.isa === "PBXVariantGroup")) for (const child of asList(group.children)) parentOf.set(child, id);
+  }
+  const pathOf = (id: string, depth = 0): string | undefined => {
+    const item = object(id);
+    if (!item || depth > 50) return undefined;
+    const own = typeof item.path === "string" ? item.path : "";
+    if (item.sourceTree === "SOURCE_ROOT") return own;
+    if (item.sourceTree === "<absolute>") return own;
+    if (item.sourceTree !== "<group>") return undefined;
+    const parent = parentOf.get(id);
+    if (!parent) return own;
+    const base = pathOf(parent, depth + 1);
+    return base === undefined ? undefined : posix.join(base, own);
+  };
+  const filePath = (buildFileId: string) => {
+    const ref = object(buildFileId)?.fileRef;
+    return typeof ref === "string" ? pathOf(ref) : undefined;
+  };
+
   const rootObject = typeof doc.rootObject === "string" ? object(doc.rootObject) : undefined;
   const targets: PbxTarget[] = asList(rootObject?.targets).flatMap((id) => {
     const target = object(id);
     if (target?.isa !== "PBXNativeTarget") return [];
-    const resources = asList(target.buildPhases)
+    const resourceFiles = asList(target.buildPhases)
       .map(object)
       .filter((phase) => phase?.isa === "PBXResourcesBuildPhase")
-      .flatMap((phase) => asList(phase!.files).map(fileName))
-      .filter((name): name is string => !!name);
+      .flatMap((phase) => asList(phase!.files));
+    const resources = resourceFiles.map(fileName).filter((name): name is string => !!name);
+    const resourcePaths = resourceFiles.map(filePath).filter((path): path is string => !!path);
     const syncedFolders = asList(target.fileSystemSynchronizedGroups).flatMap((groupId) => {
       const group = object(groupId);
       if (typeof group?.path !== "string") return [];
@@ -171,6 +199,7 @@ export function readPbxProject(text: string): PbxProject {
       productType: typeof target.productType === "string" ? target.productType : "",
       configurations: configurations(target.buildConfigurationList),
       resources,
+      resourcePaths,
       syncedFolders,
     }];
   });

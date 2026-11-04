@@ -204,7 +204,11 @@ describe("native libraries", () => {
 describe("project errors", () => {
   it("explains what's wrong", () => {
     expect(() => readProject(makeDir({}))).toThrow(UserError);
-    expect(() => readProject(makeDir({ "package.json": { dependencies: { expo: "54" } } }))).toThrow(/Expo/);
+    expect(() => readProject(makeDir({ "package.json": { dependencies: { expo: "54" } } }))).toThrow(/prebuild/);
+    // A bare app using Expo modules keeps its native folders and is read like any bare app.
+    const files = testAppFiles();
+    files["package.json"] = { name: "A11yTestApp", dependencies: { "react-native": "0.83.6", expo: "54" } };
+    expect(readProject(makeDir(files)).ios!.target).toBe("A11yTestApp");
     expect(() => readProject(makeDir({ "package.json": { dependencies: { "react-native": "0.83.6" } } }))).toThrow(/isn't installed/);
     expect(() => readProject(makeDir({ "package.json": { dependencies: {} } }))).toThrow(/doesn't depend on react-native/);
   });

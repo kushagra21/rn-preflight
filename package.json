@@ -1,6 +1,6 @@
 {
   "name": "rn-preflight",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Check a bare React Native app for App Store and Google Play rejection risks before you build and upload.",
   "license": "MIT",
   "author": "Kushagra Sinha",
@@ -15,7 +15,8 @@
     "rn-preflight": "dist/cli.js"
   },
   "files": [
-    "dist/cli.js"
+    "dist/cli.js",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=22.12"

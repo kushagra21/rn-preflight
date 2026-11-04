@@ -199,8 +199,12 @@ export function readIos(iosDir: string, options: IosOptions, notes: string[]): I
   for (const file of findFiles(iosDir, (name) => name === "PrivacyInfo.xcprivacy")) {
     const fileNotes: string[] = [];
     const values = readPlistFile(file, fileNotes);
-    ios.privacyManifests.push({ file, ...(values ? { values } : { error: fileNotes[0] }) });
-    if (inSyncedFolder(iosDir, target, file)) ios.privacyManifestInTarget = true;
+    // When paths resolve, match the exact file; a project whose paths don't resolve falls back to the name.
+    const byPath = target.resourcePaths.some((path) => join(isAbsolute(path) ? "" : iosDir, path) === file);
+    const byName = target.resourcePaths.length === 0 && target.resources.includes("PrivacyInfo.xcprivacy");
+    const inTarget = byPath || byName || inSyncedFolder(iosDir, target, file);
+    ios.privacyManifests.push({ file, inTarget, ...(values ? { values } : { error: fileNotes[0] }) });
+    if (inTarget) ios.privacyManifestInTarget = true;
   }
 
   if (settings.CODE_SIGN_ENTITLEMENTS) {

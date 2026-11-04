@@ -1,5 +1,6 @@
+import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { readPng } from "../src/core/png.js";
+import { minAlpha, readPng } from "../src/core/png.js";
 import { readPodfilePermissions } from "../src/readers/ios.js";
 import { readProject } from "../src/readers/project.js";
 import { parseStrings } from "../src/readers/strings.js";
@@ -23,8 +24,8 @@ function app(options: { info?: string; removeInfo?: string[]; files?: Record<str
 const run = (rule: Rule, root: string) => runRules(readProject(root, { platforms: ["ios"] }), [rule]);
 const summary = (rule: Rule, root: string) => run(rule, root).map((f) => `${f.severity} ${f.message}`);
 
-/** A PNG header with the given size and color type (6 = RGBA, 2 = RGB); enough for readPng. */
-function png(size: number, colorType = 2, chunks: string[] = []) {
+/** A real PNG of the given size: color type 6 (RGBA) or 2 (RGB), every pixel with `alpha`; extra chunks are empty. */
+function png(size: number, colorType = 2, chunks: string[] = [], alpha = 255) {
   const chunk = (type: string, data: Buffer) => {
     const head = Buffer.alloc(8);
     head.writeUInt32BE(data.length);
@@ -36,11 +37,13 @@ function png(size: number, colorType = 2, chunks: string[] = []) {
   ihdr.writeUInt32BE(size, 4);
   ihdr[8] = 8;
   ihdr[9] = colorType;
+  const pixel = colorType === 6 ? [20, 120, 200, alpha] : [20, 120, 200];
+  const row = Buffer.from([0, ...Array.from({ length: size }, () => pixel).flat()]);
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk("IHDR", ihdr),
     ...chunks.map((type) => chunk(type, Buffer.alloc(2))),
-    chunk("IDAT", Buffer.alloc(4)),
+    chunk("IDAT", deflateSync(Buffer.concat(Array.from({ length: size }, () => row)))),
     chunk("IEND", Buffer.alloc(0)),
   ]);
 }
@@ -120,7 +123,7 @@ describe("ios-usage-string-translations", () => {
     const root = app({
       removeInfo: ["NSLocationWhenInUseUsageDescription"],
       info: "<key>NSCameraUsageDescription</key><string>Scans receipts for your expense reports.</string><key>NSContactsUsageDescription</key><string>Finds friends who already use the app.</string>",
-      files: { "ios/A11yTestApp/de.lproj/InfoPlist.strings": '"NSCameraUsageDescription" = "Scannt Belege für Ihre Spesen.";\n', "ios/A11yTestApp/fr.lproj/InfoPlist.strings": 'NSCameraUsageDescription = "x"; NSContactsUsageDescription = "y";' },
+      files: { "ios/A11yTestApp/de.lproj/InfoPlist.strings": '"NSCameraUsageDescription" = "Scannt Belege für Ihre Spesen.";\n', "ios/A11yTestApp/fr.lproj/InfoPlist.strings": 'NSCameraUsageDescription = "x"; NSContactsUsageDescription = "y";', "ios/A11yTestApp/ja.lproj/InfoPlist.strings": '"CFBundleDisplayName" = "アプリ";', "ios/A11yTestApp/ko.lproj/InfoPlist.strings": "" },
     });
     expect(summary(usageStringTranslations, root)).toEqual(["info de.lproj/InfoPlist.strings doesn't translate NSContactsUsageDescription"]);
   });
@@ -146,13 +149,23 @@ describe("ios-privacy-manifest", () => {
     delete files["ios/A11yTestApp/PrivacyInfo.xcprivacy"];
     expect(summary(privacyManifestPresent, makeDir(files))).toEqual(["error The app has no PrivacyInfo.xcprivacy"]);
     const partial = app({ files: { "ios/A11yTestApp/PrivacyInfo.xcprivacy": manifest([CORE[0]!]) } });
-    expect(summary(privacyManifestPresent, partial)).toEqual(["error PrivacyInfo.xcprivacy doesn't declare UserDefaults and SystemBootTime, which React Native itself uses"]);
+    expect(summary(privacyManifestPresent, partial)).toEqual(["warning PrivacyInfo.xcprivacy doesn't declare UserDefaults and SystemBootTime, which React Native itself uses"]);
+  });
+
+  it("picks the manifest the app target ships over an app extension's", () => {
+    const root = app({ files: { "ios/ShareExtension/PrivacyInfo.xcprivacy": manifest([]) } });
+    const ios = readProject(root, { platforms: ["ios"] }).ios!;
+    expect(ios.privacyManifests.map((m) => [m.file.slice(root.length + 1), m.inTarget])).toEqual([
+      ["ios/A11yTestApp/PrivacyInfo.xcprivacy", true],
+      ["ios/ShareExtension/PrivacyInfo.xcprivacy", false],
+    ]);
+    expect(run(privacyManifestPresent, root)).toEqual([]);
   });
 
   it("tells apart a manifest pod install hasn't added yet from one that won't ship", () => {
     const pbx = fixture("testapp/project.pbxproj").replace(/^.*PrivacyInfo\.xcprivacy in Resources \*\/,\n/m, "");
     expect(summary(privacyManifestPresent, app({ files: { "ios/A11yTestApp.xcodeproj/project.pbxproj": pbx } }))).toEqual([
-      "error PrivacyInfo.xcprivacy isn't in A11yTestApp's Copy Bundle Resources, so it won't ship",
+      "warning ios/A11yTestApp/PrivacyInfo.xcprivacy isn't in A11yTestApp's Copy Bundle Resources, so it won't ship and its declarations don't count",
     ]);
     const files: Record<string, unknown> = { ...testAppFiles(), "ios/A11yTestApp.xcodeproj/project.pbxproj": pbx };
     delete files["ios/Podfile.lock"];
@@ -227,6 +240,9 @@ describe("ios-app-icon", () => {
     expect(readPng(png(1024, 6))!.alpha).toBe(true);
     expect(readPng(png(1024, 2, ["tRNS"]))!.alpha).toBe(true);
     expect(readPng(Buffer.from("GIF89a"))).toBeUndefined();
+    expect(minAlpha(png(64, 6, [], 255))).toBe(255);
+    expect(minAlpha(png(64, 6, [], 0))).toBe(0);
+    expect(minAlpha(png(64, 2))).toBeUndefined();
   });
 
   it("needs a 1024 App Store image (the template has none)", () => {
@@ -238,12 +254,19 @@ describe("ios-app-icon", () => {
     expect(run(appIcon, app({ files: { ...contents([single]), [`${set}/icon.png`]: png(1024) } }))).toEqual([]);
 
     const images = [single, { idiom: "iphone", size: "60x60", scale: "3x", filename: "small.png" }, { idiom: "iphone", size: "40x40", scale: "2x", filename: "gone.png" }];
-    const root = app({ files: { ...contents(images), [`${set}/icon.png`]: png(1024, 6), [`${set}/small.png`]: png(120) } });
+    const root = app({ files: { ...contents(images), [`${set}/icon.png`]: png(1024, 6, [], 0), [`${set}/small.png`]: png(120) } });
     expect(summary(appIcon, root)).toEqual([
-      "error icon.png has an alpha channel; the App Store icon must be opaque (ITMS-90717)",
+      "error icon.png has transparent pixels; the App Store icon must be opaque (ITMS-90717)",
       "error small.png is 120×120; its slot (60x60 @3x) needs 180×180",
       "error gone.png is listed in AppIcon but missing",
     ]);
+  });
+
+  it("calls an unused alpha channel info, and ignores Mac Catalyst slots", () => {
+    const single = { idiom: "universal", platform: "ios", size: "1024x1024", filename: "icon.png" };
+    const mac = { idiom: "mac", size: "16x16", scale: "2x", filename: "mac.png" };
+    const root = app({ files: { ...contents([single, mac]), [`${set}/icon.png`]: png(1024, 6, [], 255), [`${set}/mac.png`]: Buffer.from("icns data") } });
+    expect(summary(appIcon, root)).toEqual(["info icon.png has an alpha channel, though every pixel is opaque"]);
   });
 
   it("leaves Icon Composer icons alone, and flags a missing icon set", () => {

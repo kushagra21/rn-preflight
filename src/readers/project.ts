@@ -19,8 +19,10 @@ export function readProject(cwd: string, options: ReadOptions = {}): Project {
   const pkg = readJson(pkgFile);
   const declared: Record<string, string> = { ...pkg.peerDependencies, ...pkg.devDependencies, ...pkg.dependencies };
 
-  if ("expo" in declared) {
-    throw new UserError("This is an Expo project. rn-preflight checks bare React Native apps for now; Expo support is planned.");
+  // Bare apps often use Expo modules (expo is a dependency) but keep ios/ and android/ in the repository. Only an app
+  // with neither folder is managed by Expo's prebuild, which rn-preflight can't read yet.
+  if ("expo" in declared && !isDir(join(root, "ios")) && !isDir(join(root, "android"))) {
+    throw new UserError("This Expo app has no ios/ or android/ folder (Expo generates them with prebuild). rn-preflight reads native projects, so run `npx expo prebuild` first, or wait for Expo support.");
   }
   const rnDir = findPackageDir(root, "react-native");
   if (!rnDir) {

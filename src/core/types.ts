@@ -24,8 +24,11 @@ export interface IosProject {
   /** InfoPlist.strings per .lproj language next to Info.plist. */
   infoPlistStrings?: { language: string; file: string; values: Record<string, string> }[];
   version: { marketing?: string; build?: string };
-  /** PrivacyInfo.xcprivacy files in the app's folders, and whether the app target copies one into the app. */
-  privacyManifests: { file: string; values?: PlistDict; error?: string }[];
+  /**
+   * PrivacyInfo.xcprivacy files in ios/ (app extensions' too), each with whether the app target copies it into the
+   * app, and whether the target copies any.
+   */
+  privacyManifests: { file: string; inTarget: boolean; values?: PlistDict; error?: string }[];
   privacyManifestInTarget: boolean;
   entitlements?: { file: string; values: PlistDict };
   appIcon?: { name: string; dir?: string; composerFile?: string; images: AppIconImage[] };
