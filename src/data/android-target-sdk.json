@@ -1,0 +1,13 @@
+{
+  "checkedOn": "2026-11-04",
+  "sources": [
+    "https://developer.android.com/google/play/requirements/target-sdk",
+    "https://support.google.com/googleplay/android-developer/answer/11926878"
+  ],
+  "data": {
+    "phone": [
+      { "from": "2025-08-31", "newApps": 35, "updates": 35 },
+      { "from": "2026-08-31", "newApps": 36, "updates": 36 }
+    ]
+  }
+}

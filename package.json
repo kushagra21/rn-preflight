@@ -1,0 +1,53 @@
+{
+  "name": "rn-preflight",
+  "version": "0.0.0",
+  "description": "Check a bare React Native app for App Store and Google Play rejection risks before you build and upload.",
+  "license": "MIT",
+  "author": "Kushagra Sinha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kushagra21/rn-preflight.git"
+  },
+  "homepage": "https://github.com/kushagra21/rn-preflight#readme",
+  "bugs": "https://github.com/kushagra21/rn-preflight/issues",
+  "type": "module",
+  "bin": {
+    "rn-preflight": "dist/cli.js"
+  },
+  "files": [
+    "dist/cli.js"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "react-native",
+    "app-store",
+    "google-play",
+    "privacy-manifest",
+    "info-plist",
+    "release",
+    "checklist",
+    "cli"
+  ],
+  "dependencies": {
+    "commander": "^15.0.0",
+    "fast-xml-parser": "^5.12.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsup": "^9.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
