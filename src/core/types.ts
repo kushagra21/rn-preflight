@@ -91,6 +91,15 @@ export interface NativeLibrary {
   androidManifest?: AndroidManifestFile;
 }
 
+/** Versions at an earlier commit (by default the latest tag), to check that this build raises them. */
+export interface PreviousVersions {
+  ref?: string;
+  ios?: { marketing?: string; build?: string };
+  android?: { versionName?: string; versionCode?: string };
+  /** Why there's nothing to compare with. */
+  note?: string;
+}
+
 export interface Project {
   root: string;
   name?: string;
@@ -100,6 +109,8 @@ export interface Project {
   ios?: IosProject;
   android?: AndroidProject;
   libraries: NativeLibrary[];
+  /** Filled in by audit; rules that need it skip when it's missing. */
+  previous?: PreviousVersions;
   /** Things the readers couldn't resolve or had to guess; doctor shows them. */
   notes: string[];
 }

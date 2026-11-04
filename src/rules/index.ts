@@ -4,6 +4,7 @@ import { appIcon, encryptionFlag, ipadOrientations, launchScreen, loginServices,
 import { privacyManifestPresent, privacyPodApis, privacyReasons, privacySdkList } from "./ios-privacy.js";
 import { usageStringMissing, usageStringQuality, usageStringTranslations } from "./ios-usage.js";
 import type { Finding, Rule, Severity } from "./types.js";
+import { versionBump, versionFormat, versionsMatch } from "./versions.js";
 
 /** Every rule rn-preflight runs, in the order `rules` lists them. */
 export const RULES: Rule[] = [
@@ -27,15 +28,20 @@ export const RULES: Rule[] = [
   debuggable,
   cleartextTraffic,
   launcherIcon,
+  versionFormat,
+  versionsMatch,
+  versionBump,
 ];
 
 const ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
 
-/** Runs the rules that apply to the platforms the project was read for; a rule that throws becomes a finding. */
+/** The rules that apply to the platforms the project was read for. */
+export const applicableRules = (project: Project, rules: Rule[] = RULES) => rules.filter((rule) => rule.platform === "both" || !!project[rule.platform]);
+
+/** Runs the rules that apply to the project; a rule that throws becomes a finding. */
 export function runRules(project: Project, rules: Rule[] = RULES): Finding[] {
   const findings: Finding[] = [];
-  for (const rule of rules) {
-    if (rule.platform !== "both" && !project[rule.platform]) continue;
+  for (const rule of applicableRules(project, rules)) {
     try {
       for (const raw of rule.check(project)) findings.push({ ...raw, rule: rule.id, severity: raw.severity ?? rule.severity });
     } catch (error) {

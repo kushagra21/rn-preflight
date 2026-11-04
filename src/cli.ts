@@ -3,7 +3,8 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { Command, Option } from "commander";
 import pc from "picocolors";
-import { auditCommand, rulesCommand } from "./commands/audit.js";
+import { auditCommand, ignoreCommand, rulesCommand } from "./commands/audit.js";
+import { CONFIG_FILE } from "./core/config.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { UserError } from "./core/errors.js";
 import type { Platform } from "./core/types.js";
@@ -38,7 +39,22 @@ export function buildProgram(): Command {
 
   projectOptions(program.command("audit").description("Check the app; exits with 1 when there are errors"))
     .option("--json", "print the findings as JSON")
+    .option("--html <file>", "also write an HTML report, e.g. preflight-report.html")
+    .option("--since <ref>", "the release to compare version numbers with (default: the latest git tag)")
+    .option("--no-git", "don't compare version numbers with git")
     .action((options) => auditCommand(readOptions(options), version));
+
+  projectOptions(
+    program
+      .command("ignore")
+      .description(`Accept a finding: saves it with your reason in ${CONFIG_FILE}, so audit stops counting it`)
+      .argument("<rule>", "the rule id, e.g. android-release-signing")
+      .argument("<key>", "the finding's key, shown in --json output and the report"),
+  )
+    .requiredOption("--reason <text>", "why it's fine, for the next person")
+    .option("--since <ref>", "as for audit")
+    .option("--no-git", "as for audit")
+    .action((rule, key, options) => ignoreCommand(rule, key, readOptions(options), version));
 
   program
     .command("rules")
