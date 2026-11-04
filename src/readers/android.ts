@@ -142,3 +142,39 @@ export function readAndroid(androidDir: string, options: AndroidOptions, notes: 
   }
   return project;
 }
+
+export interface ReleasePermission {
+  name: string;
+  maxSdkVersion?: string;
+  /** "app" (main or release manifest) and the libraries that declare it. */
+  sources: string[];
+}
+
+/**
+ * Permissions the release build asks for, the way the manifest merger combines them: the app's main and release
+ * manifests plus every linked library's, minus what the app removes with tools:node="remove". Permissions from
+ * AARs (React Native's own, Maven dependencies) aren't visible without a Gradle build.
+ */
+export function releasePermissions(project: { android?: AndroidProject; libraries: { name: string; android: boolean; androidManifest?: AndroidManifestFile }[] }): ReleasePermission[] {
+  const android = project.android;
+  if (!android) return [];
+  const appManifests = android.manifests.filter((m) => m.sourceSet === "main" || m.sourceSet === "release");
+  const removed = new Set(appManifests.flatMap((m) => m.permissions.filter((p) => p.removed).map((p) => p.name)));
+  const merged = new Map<string, ReleasePermission & { unlimited: boolean }>();
+  const add = (name: string, source: string, maxSdkVersion: string | undefined) => {
+    if (removed.has(name)) return;
+    const entry = merged.get(name) ?? { name, sources: [], unlimited: false };
+    if (!entry.sources.includes(source)) entry.sources.push(source);
+    // The merged permission has no limit if any declaration has none, else the highest limit.
+    if (maxSdkVersion === undefined) entry.unlimited = true;
+    else entry.maxSdkVersion = String(Math.max(Number(entry.maxSdkVersion ?? 0), Number(maxSdkVersion)));
+    merged.set(name, entry);
+  };
+  for (const manifest of appManifests) for (const p of manifest.permissions.filter((p) => !p.removed)) add(p.name, "app", p.maxSdkVersion);
+  for (const library of project.libraries.filter((l) => l.android)) {
+    for (const p of library.androidManifest?.permissions.filter((p) => !p.removed) ?? []) add(p.name, library.name, p.maxSdkVersion);
+  }
+  return [...merged.values()]
+    .map(({ unlimited, maxSdkVersion, ...rest }) => ({ ...rest, ...(!unlimited && maxSdkVersion ? { maxSdkVersion } : {}) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}

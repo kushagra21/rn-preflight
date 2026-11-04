@@ -2,6 +2,7 @@ import { relative } from "node:path";
 import pc from "picocolors";
 import { UserError } from "../core/errors.js";
 import type { GradleValue, Project } from "../core/types.js";
+import { releasePermissions } from "../readers/android.js";
 import { readProject, type ReadOptions } from "../readers/project.js";
 
 export interface Line {
@@ -45,6 +46,9 @@ export function describe(project: Project): Line[] {
     lines.push({ ok: !!android.targetSdk?.value, label: "SDK levels", detail: `target ${gradle(android.targetSdk)}, compile ${gradle(android.compileSdk)}, min ${gradle(android.minSdk)}` });
     const release = android.buildTypes.release;
     lines.push({ ok: true, optional: true, label: "Release signing", detail: release?.signingConfig ? release.signingConfig.raw : "no signingConfig in buildTypes.release" });
+    const permissions = releasePermissions(project);
+    const fromLibraries = permissions.filter((p) => p.sources.some((s) => s !== "app")).length;
+    lines.push({ ok: true, label: "Permissions", detail: `${permissions.length} in the release build (${fromLibraries} from libraries)${permissions.length ? `: ${permissions.map((p) => p.name.replace(/^android\.permission\./, "")).join(", ")}` : ""}` });
     lines.push({ ok: android.manifests.every((m) => !m.error), label: "Manifests", detail: android.manifests.map((m) => `${m.sourceSet}${m.error ? ` (unreadable: ${m.error})` : ""}`).join(", ") || "none" });
   }
 

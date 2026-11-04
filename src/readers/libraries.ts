@@ -23,7 +23,8 @@ export function readLibraries(root: string, declared: Record<string, string>): N
     const ios = hasPodspec(dir);
     const android = hasAndroid(dir);
     if (!ios && !android) continue;
-    const manifestFile = join(dir, "android", "src", "main", "AndroidManifest.xml");
+    // Libraries that support old and new Android Gradle Plugins ship AndroidManifestNew.xml next to the old one.
+    const manifestFile = ["AndroidManifest.xml", "AndroidManifestNew.xml"].map((name) => join(dir, "android", "src", "main", name)).find(existsSync) ?? "";
     libraries.push({
       name,
       version: readJson(join(dir, "package.json")).version,
@@ -31,7 +32,7 @@ export function readLibraries(root: string, declared: Record<string, string>): N
       ios,
       android,
       privacyManifests: ios ? findFiles(dir, (file) => file === "PrivacyInfo.xcprivacy") : [],
-      ...(android && existsSync(manifestFile) ? { androidManifest: readManifest(manifestFile, "main") } : {}),
+      ...(android && manifestFile ? { androidManifest: readManifest(manifestFile, "main") } : {}),
     });
   }
   return libraries;

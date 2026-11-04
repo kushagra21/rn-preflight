@@ -1,4 +1,5 @@
 import type { Project } from "../core/types.js";
+import { cleartextTraffic, debuggable, launcherIcon, releaseSigning, sensitivePermissions, targetSdk } from "./android.js";
 import { appIcon, encryptionFlag, ipadOrientations, launchScreen, loginServices, sceneLifecycle, transportSecurity } from "./ios-app.js";
 import { privacyManifestPresent, privacyPodApis, privacyReasons, privacySdkList } from "./ios-privacy.js";
 import { usageStringMissing, usageStringQuality, usageStringTranslations } from "./ios-usage.js";
@@ -20,6 +21,12 @@ export const RULES: Rule[] = [
   transportSecurity,
   encryptionFlag,
   loginServices,
+  targetSdk,
+  sensitivePermissions,
+  releaseSigning,
+  debuggable,
+  cleartextTraffic,
+  launcherIcon,
 ];
 
 const ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 };

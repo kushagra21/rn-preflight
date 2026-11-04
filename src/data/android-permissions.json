@@ -1,0 +1,66 @@
+{
+  "checkedOn": "2026-11-04",
+  "sources": [
+    "https://support.google.com/googleplay/android-developer/answer/9888170",
+    "https://support.google.com/googleplay/android-developer/answer/13392821"
+  ],
+  "data": {
+    "declarations": [
+      {
+        "policy": "SMS and Call Log",
+        "permissions": ["READ_SMS", "SEND_SMS", "WRITE_SMS", "RECEIVE_SMS", "RECEIVE_WAP_PUSH", "RECEIVE_MMS", "READ_CALL_LOG", "WRITE_CALL_LOG", "PROCESS_OUTGOING_CALLS"],
+        "note": "only allowed for the default SMS or phone app, or an approved exception"
+      },
+      {
+        "policy": "Location (background)",
+        "permissions": ["ACCESS_BACKGROUND_LOCATION"],
+        "note": "needs a declaration, a video of the feature and a prominent in-app disclosure"
+      },
+      {
+        "policy": "Photo and Video",
+        "permissions": ["READ_MEDIA_IMAGES", "READ_MEDIA_VIDEO"],
+        "note": "only for apps whose core feature needs broad photo access; others should use the system photo picker"
+      },
+      {
+        "policy": "All Files Access",
+        "permissions": ["MANAGE_EXTERNAL_STORAGE"],
+        "note": "only for file managers, backup and similar apps"
+      },
+      {
+        "policy": "Package Visibility",
+        "permissions": ["QUERY_ALL_PACKAGES"],
+        "note": "only when the app's core feature needs to see every installed app; use <queries> instead"
+      },
+      {
+        "policy": "Request Install Packages",
+        "permissions": ["REQUEST_INSTALL_PACKAGES"],
+        "note": "only when installing other apps is a core feature"
+      },
+      {
+        "policy": "Exact Alarm",
+        "permissions": ["USE_EXACT_ALARM", "SCHEDULE_EXACT_ALARM"],
+        "note": "USE_EXACT_ALARM is only for alarm clock and calendar apps"
+      },
+      {
+        "policy": "Full-Screen Intent",
+        "permissions": ["USE_FULL_SCREEN_INTENT"],
+        "note": "only calling and alarm apps keep it by default"
+      },
+      {
+        "policy": "Body Sensors",
+        "permissions": ["BODY_SENSORS", "BODY_SENSORS_BACKGROUND"],
+        "note": "needs a declaration of the health feature that uses it"
+      },
+      {
+        "policy": "Foreground service types",
+        "prefix": "FOREGROUND_SERVICE_",
+        "note": "each foreground service type needs a declaration with a demo video on the App content page"
+      },
+      {
+        "policy": "Health Connect",
+        "prefix": "health.",
+        "note": "Health Connect data types need a declaration"
+      }
+    ]
+  }
+}

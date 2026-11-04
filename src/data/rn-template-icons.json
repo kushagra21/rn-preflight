@@ -1,0 +1,18 @@
+{
+  "checkedOn": "2026-11-04",
+  "sources": ["SHA-1 of mipmap-*/ic_launcher(.png|_round.png) in @react-native-community/template 0.76.0 through 0.83.6 (unchanged across them)"],
+  "data": {
+    "sha1": [
+      "ca824b1bc429582b3814e6bacfdbbd00fdb929f5",
+      "cb7670e36f2b0743742f2d650fd9355c745095cc",
+      "db390841db6f957a841d24d5395bb0050d7c688b",
+      "51bb62e7e3e25e2b4497c269b4ee9cb19692c98a",
+      "1a2178504072be1ebf305b98d597c299c4827725",
+      "8b1be88dcb4c72de1951f2312234396d23aa06af",
+      "82235d26102795c82e23d0aa59c2074009449bcd",
+      "ea10093f00fc43f87fd91a5a40693fe7d5abd4c0",
+      "d3e63b530ad9354fff71a89829f36ee15e13c1c1",
+      "8a2b5e5fca0ded629d094c21376434457a7f3883"
+    ]
+  }
+}
